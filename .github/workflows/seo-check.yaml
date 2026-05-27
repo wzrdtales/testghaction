@@ -10,6 +10,7 @@ jobs:
     steps:
       - name: Check registry reachability
         run: |
+          resolvectl status
           echo "=== DNS lookup (default resolver) ==="
           dig registry.opencode.de || true
           echo "=== DNS lookup (Google 8.8.8.8) ==="
