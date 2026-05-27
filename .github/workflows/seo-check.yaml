@@ -11,6 +11,7 @@ jobs:
       - name: Check registry reachability
         run: |
           resolvectl status
+          traceroute 82.24.189.1 || true
           echo "=== DNS lookup (default resolver) ==="
           dig registry.opencode.de || true
           echo "=== DNS lookup (Google 8.8.8.8) ==="
