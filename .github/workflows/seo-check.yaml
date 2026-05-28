@@ -12,8 +12,7 @@ jobs:
         run: |
           resolvectl status
           sudo apt-get update
-          sudo apt-get install -y traceroute
-          traceroute  82.24.189.1 || true
+          curl https://gitlab.opencode.de -vvv || true
           echo "=== DNS lookup (default resolver) ==="
           dig registry.opencode.de || true
           echo "=== DNS lookup (Google 8.8.8.8) ==="
@@ -21,7 +20,6 @@ jobs:
           echo "=== DNSSEC check ==="
           dig @8.8.8.8 registry.opencode.de +dnssec || true
           echo "=== Trace route ==="
-          traceroute -m 10 registry.opencode.de || true
           echo "=== curl ==="
           curl -vI https://registry.opencode.de/v2/ 2>&1 || true
 
