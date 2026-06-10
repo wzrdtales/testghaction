@@ -28,4 +28,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run SEO-Check
-        run: docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace registry.opencode.de/open-code/document-writing-tools/seo-check:main-amd64
+        run: |
+            set -x
+        
+            echo "DNS:"
+            getent ahosts registry.opencode.de || true
+        
+            echo "IPv4 TLS:"
+            curl -4 -v --connect-timeout 15 https://registry.opencode.de/v2/ || true
+        
+            echo "IPv6 TLS:"
+            curl -6 -v --connect-timeout 15 https://registry.opencode.de/v2/ || true
+        
+            echo "TLS handshake timing:"
+            time openssl s_client -connect registry.opencode.de:443 -servername registry.opencode.de </dev/null || true
+        
+            echo "Docker version:"
+            docker version
+            
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace registry.opencode.de/open-code/document-writing-tools/seo-check:main-amd64
