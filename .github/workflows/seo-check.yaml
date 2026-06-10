@@ -59,5 +59,6 @@ jobs:
         
             echo "Docker version:"
             docker version
-            
+
+            docker pull registry.opencode.de/plain/oci/elasticsearch:8.19.9
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace registry.opencode.de/open-code/document-writing-tools/seo-check:main-amd64
