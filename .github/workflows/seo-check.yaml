@@ -42,6 +42,20 @@ jobs:
         
             echo "TLS handshake timing:"
             time openssl s_client -connect registry.opencode.de:443 -servername registry.opencode.de </dev/null || true
+
+            echo "DNS:"
+            getent ahosts s3b.wx-one.com || true
+        
+            echo "IPv4 TLS:"
+            curl -4 -v --connect-timeout 15 https://s3b.wx-one.com/v2/ || true
+        
+            echo "IPv6 TLS:"
+            curl -6 -v --connect-timeout 15 https://s3b.wx-one.com/v2/ || true
+        
+            echo "TLS handshake timing:"
+            time openssl s_client -connect s3b.wx-one.com:443 -servername s3b.wx-one.com </dev/null || true
+
+              
         
             echo "Docker version:"
             docker version
