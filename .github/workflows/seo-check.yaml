@@ -29,6 +29,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Test pull with skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+      
+          skopeo copy \
+            docker://registry.opencode.de/plain/oci/elasticsearch:8.19.9 \
+            dir:/tmp/elasticsearch-image
       - name: Debug exact failing Elasticsearch blob
         run: |
           set -euxo pipefail
