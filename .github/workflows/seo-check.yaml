@@ -27,11 +27,65 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Limit Docker pull concurrency
+      - name: Enable Docker debug logs
         run: |
           sudo mkdir -p /etc/docker
-          echo '{"max-concurrent-downloads":1}' | sudo tee /etc/docker/daemon.json
+          echo '{"debug":true,"max-concurrent-downloads":1}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
+          docker info | grep -i -E 'debug|concurrent' || true
+
+      - name: Debug exact failing config blob
+        run: |
+          set -euxo pipefail
+      
+          REPO="open-code/document-writing-tools/seo-check"
+          TAG="main-amd64"
+      
+          TOKEN="$(curl -fsSL \
+            "https://gitlab.opencode.de/jwt/auth?service=container_registry&scope=repository:${REPO}:pull" \
+            | jq -r .token)"
+      
+          echo "Fetch manifest"
+          curl -v -L \
+            --http1.1 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+            "https://registry.opencode.de/v2/${REPO}/manifests/${TAG}" \
+            -o manifest.json
+      
+          cat manifest.json | jq .
+      
+          CONFIG="$(jq -r '.config.digest' manifest.json)"
+          echo "Config digest: ${CONFIG}"
+      
+          echo "Fetch config blob without following redirect"
+          curl -v \
+            --http1.1 \
+            --connect-timeout 20 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry.opencode.de/v2/${REPO}/blobs/${CONFIG}" \
+            -o /tmp/config.response \
+            -D /tmp/config.headers || true
+      
+          echo "Headers:"
+          cat /tmp/config.headers || true
+      
+          echo "Response:"
+          head -c 500 /tmp/config.response || true
+      
+          echo "Fetch config blob with redirect"
+          curl -v -L \
+            --http1.1 \
+            --connect-timeout 20 \
+            --max-time 180 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry.opencode.de/v2/${REPO}/blobs/${CONFIG}" \
+            -o config.json
+      
+          ls -lh config.json
+          head -c 300 config.json || true
       - name: Run SEO-Check
         run: |
             set -x
@@ -70,3 +124,8 @@ jobs:
 
             docker pull registry.opencode.de/plain/oci/elasticsearch:8.19.9
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace registry.opencode.de/open-code/document-writing-tools/seo-check:main-amd64
+        continue-on-error: true
+      
+      - name: Show Docker daemon logs
+        run: |
+          sudo journalctl -u docker --no-pager -n 300
