@@ -52,7 +52,7 @@ jobs:
             getent ahosts s3b.wx-one.com || true
 
 
-            curl -4 -v --conect-timeout 15 https://oc-registry.s3d.wx1.eu || true
+            curl -4 -v --connect-timeout 15 https://oc-registry.s3d.wx1.eu || true
         
             echo "IPv4 TLS:"
             curl -4 -v --connect-timeout 15 https://s3b.wx-one.com/v2/ || true
