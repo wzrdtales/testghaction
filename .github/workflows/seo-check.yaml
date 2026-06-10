@@ -37,6 +37,30 @@ jobs:
           skopeo copy \
             docker://registry.opencode.de/plain/oci/elasticsearch:8.19.9 \
             dir:/tmp/elasticsearch-image
+      - name: Downgrade Docker Engine to latest 27.x
+        run: |
+          set -euxo pipefail
+      
+          sudo apt-get update
+      
+          echo "Available Docker versions:"
+          apt-cache madison docker-ce | head -30
+      
+          DOCKER_VERSION="$(apt-cache madison docker-ce | awk '{print $3}' | grep '^5:27\.' | head -n1)"
+      
+          echo "Installing Docker version: ${DOCKER_VERSION}"
+      
+          sudo systemctl stop docker || true
+      
+          sudo apt-get install -y --allow-downgrades \
+            docker-ce="${DOCKER_VERSION}" \
+            docker-ce-cli="${DOCKER_VERSION}" \
+            docker-ce-rootless-extras="${DOCKER_VERSION}"
+      
+          sudo systemctl start docker
+      
+          docker version
+      
       - name: Debug exact failing Elasticsearch blob
         run: |
           set -euxo pipefail
