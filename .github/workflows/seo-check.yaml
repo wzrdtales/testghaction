@@ -27,6 +27,77 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Debug exact failing Elasticsearch blob
+        run: |
+          set -euxo pipefail
+      
+          REPO="plain/oci/elasticsearch"
+          TAG="8.19.9"
+          FAILING_BLOB="sha256:fd4aa3667332c2a4837e1b5f395b0555b3c4ec299e38166ae93ee84bad01befa"
+      
+          TOKEN="$(curl -fsSL \
+            "https://gitlab.opencode.de/jwt/auth?service=container_registry&scope=repository:${REPO}:pull" \
+            | jq -r .token)"
+      
+          echo "Fetch failing blob without redirect"
+          curl -v \
+            --http1.1 \
+            --connect-timeout 20 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry.opencode.de/v2/${REPO}/blobs/${FAILING_BLOB}" \
+            -D blob.headers \
+            -o blob.body \
+            || true
+      
+          echo "Headers:"
+          sed -E 's#(Location: https://[^?]+)\?.*#\1?[REDACTED]#' blob.headers || true
+      
+          echo "Fetch failing blob with redirect"
+          curl -v -L \
+            --http1.1 \
+            --connect-timeout 20 \
+            --max-time 300 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry.opencode.de/v2/${REPO}/blobs/${FAILING_BLOB}" \
+            -o /dev/null
+      - name: Test failing blob via fixed S3 IPs
+        run: |
+          set -euxo pipefail
+      
+          REPO="plain/oci/elasticsearch"
+          FAILING_BLOB="sha256:fd4aa3667332c2a4837e1b5f395b0555b3c4ec299e38166ae93ee84bad01befa"
+      
+          TOKEN="$(curl -fsSL \
+            "https://gitlab.opencode.de/jwt/auth?service=container_registry&scope=repository:${REPO}:pull" \
+            | jq -r .token)"
+      
+          curl -sS \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry.opencode.de/v2/${REPO}/blobs/${FAILING_BLOB}" \
+            -D blob.headers \
+            -o /tmp/blob.redirect \
+            || true
+      
+          URL="$(awk 'tolower($1)=="location:" {print $2}' blob.headers | tr -d '\r')"
+      
+          echo "Testing 82.22.9.4"
+          curl -v -L \
+            --http1.1 \
+            --resolve s3b.wx-one.com:443:82.22.9.4 \
+            --connect-timeout 20 \
+            --max-time 300 \
+            "$URL" \
+            -o /dev/null
+      
+          echo "Testing 82.22.9.5"
+          curl -v -L \
+            --http1.1 \
+            --resolve s3b.wx-one.com:443:82.22.9.5 \
+            --connect-timeout 20 \
+            --max-time 300 \
+            "$URL" \
+            -o /dev/null      
       - name: Enable Docker debug logs
         run: |
           sudo mkdir -p /etc/docker
